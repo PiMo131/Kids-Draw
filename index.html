@@ -489,6 +489,11 @@ function exportSTL() {
     group.add(clone);
   });
 
+  // Scale so the 22-unit grid = 200 mm (20 cm build plate)
+  const MM_PER_UNIT = 200 / 22;
+  group.scale.setScalar(MM_PER_UNIT);
+  group.updateMatrixWorld(true);
+
   const exporter = new STLExporter();
   const stlString = exporter.parse(group, { binary: false });
 
@@ -518,4 +523,3 @@ new ResizeObserver(() => {
 </script>
 </body>
 </html>
-
