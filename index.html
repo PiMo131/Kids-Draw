@@ -1,1 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 3D Builder for Kids</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito', sans-serif; overflow: hidden; height: 100vh; width: 100vw; background: #0d1b2a; }
+
+#app {
+  display: grid;
+  grid-template-areas: "header header" "shapes canvas" "colors colors";
+  grid-template-columns: 90px 1fr;
+  grid-template-rows: 60px 1fr 84px;
+  height: 100vh;
+}
+
+/* ── Header ── */
+#header {
+  grid-area: header;
+  background: linear-gradient(90deg, #f953c6, #b91d73, #f953c6, #ffb347, #f953c6);
+  background-size: 300% 100%;
+  animation: rainbow 6s linear infinite;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  box-shadow: 0 4px 24px rgba(249,83,198,0.5);
+  z-index: 10;
+}
+@keyframes rainbow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+#title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.7rem; color: white;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(255,200,255,0.5);
+  letter-spacing: 1px;
+}
+#tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tool-btn {
+  background: rgba(255,255,255,0.2);
+  border: 2px solid rgba(255,255,255,0.45);
+  color: white; cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800; font-size: 0.78rem;
+  padding: 6px 13px; border-radius: 22px;
+  transition: all 0.15s; white-space: nowrap;
+}
+.tool-btn:hover { background: rgba(255,255,255,0.38); transform: translateY(-2px); }
+.tool-btn.active { background: white; color: #c0006b; border-color: white; box-shadow: 0 2px 12px rgba(255,255,255,0.4); }
+.tool-btn.danger { background: rgba(255,70,70,0.28); border-color: rgba(255,120,120,0.5); }
+.tool-btn.danger:hover { background: rgba(255,70,70,0.5); }
+.tool-btn.export { background: rgba(29,209,161,0.25); border-color: rgba(29,209,161,0.6); }
+.tool-btn.export:hover { background: rgba(29,209,161,0.45); }
+.sep { width: 2px; height: 26px; background: rgba(255,255,255,0.3); border-radius: 2px; margin: 0 2px; }
+
+/* ── Shapes sidebar ── */
+#shapes {
+  grid-area: shapes;
+  background: #0d1b2a;
+  padding: 10px 6px; display: flex; flex-direction: column;
+  gap: 7px; align-items: center;
+  border-right: 2px solid #1a3050;
+  overflow-y: auto;
+}
+.shape-btn {
+  width: 74px; height: 68px;
+  background: linear-gradient(145deg, #162840, #0d1b2a);
+  border: 2px solid #1e3a5f; border-radius: 18px;
+  cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  transition: all 0.2s; font-size: 1.7rem; color: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+.shape-btn:hover {
+  border-color: #48dbfb;
+  background: linear-gradient(145deg, #1a4a7a, #163060);
+  transform: scale(1.06) translateX(3px);
+  box-shadow: 0 0 20px rgba(72,219,251,0.35), 0 4px 12px rgba(0,0,0,0.4);
+}
+.shape-btn:active { transform: scale(0.95); }
+.shape-btn .lbl { font-size: 0.55rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; color: #8bb; }
+
+/* ── Canvas ── */
+#canvas-wrap {
+  grid-area: canvas;
+  position: relative; overflow: hidden;
+}
+#canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+
+#hint {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  color: white; padding: 8px 20px; border-radius: 24px;
+  font-size: 0.8rem; font-weight: 800; pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: opacity 0.8s; white-space: nowrap;
+}
+
+#sel-info {
+  position: absolute; bottom: 14px; right: 14px;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(10px);
+  padding: 8px 16px; border-radius: 14px;
+  font-size: 0.75rem; color: #aac; font-weight: 700;
+  border: 1px solid rgba(255,255,255,0.1);
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+#sel-info.on { opacity: 1; }
+
+#key-hint {
+  position: absolute; bottom: 14px; left: 14px;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+  padding: 8px 14px; border-radius: 12px;
+  font-size: 0.65rem; color: #889; font-weight: 700; line-height: 1.8;
+  border: 1px solid rgba(255,255,255,0.08); pointer-events: none;
+}
+kbd {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 0.7rem;
+}
+
+/* ── Color palette ── */
+#colors {
+  grid-area: colors;
+  background: #0d1b2a; border-top: 2px solid #1a3050;
+  display: flex; align-items: center; justify-content: center;
+  gap: 9px; padding: 12px 16px; flex-wrap: wrap;
+}
+.swatch {
+  width: 40px; height: 40px; border-radius: 50%;
+  cursor: pointer; border: 3px solid transparent;
+  transition: all 0.16s; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  position: relative;
+}
+.swatch:hover { transform: scale(1.22); border-color: white; }
+.swatch.sel { border-color: white; transform: scale(1.18); box-shadow: 0 0 0 4px rgba(255,255,255,0.25), 0 2px 10px rgba(0,0,0,0.4); }
+.swatch.sel::after {
+  content: '✓'; position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: rgba(0,0,0,0.5); font-weight: 900;
+}
+
+/* Toast */
+#toast {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+  background: #1dd1a1; color: #003; padding: 8px 24px; border-radius: 20px;
+  font-weight: 800; font-size: 0.85rem; z-index: 100;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="header">
+    <div id="title">🎨 3D Builder</div>
+    <div id="tools">
+      <button class="tool-btn active" id="btn-move"      data-mode="translate">✋ Move</button>
+      <button class="tool-btn"        id="btn-rotate"    data-mode="rotate">🔄 Rotate</button>
+      <button class="tool-btn"        id="btn-scale"     data-mode="scale">📐 Scale</button>
+      <div class="sep"></div>
+      <button class="tool-btn"        id="btn-duplicate">📋 Copy</button>
+      <button class="tool-btn danger" id="btn-delete">🗑️ Delete</button>
+      <button class="tool-btn danger" id="btn-clear">💣 Clear All</button>
+      <div class="sep"></div>
+      <button class="tool-btn export" id="btn-stl">💾 Export STL</button>
+    </div>
+  </header>
+
+  <div id="shapes">
+    <button class="shape-btn" data-shape="box"      title="Box">📦<span class="lbl">Box</span></button>
+    <button class="shape-btn" data-shape="sphere"   title="Sphere">🔵<span class="lbl">Ball</span></button>
+    <button class="shape-btn" data-shape="cylinder" title="Cylinder">🥫<span class="lbl">Tube</span></button>
+    <button class="shape-btn" data-shape="cone"     title="Cone">🔺<span class="lbl">Cone</span></button>
+    <button class="shape-btn" data-shape="torus"    title="Torus">🍩<span class="lbl">Donut</span></button>
+    <button class="shape-btn" data-shape="pyramid"  title="Pyramid">🔷<span class="lbl">Pyra</span></button>
+    <button class="shape-btn" data-shape="star"     title="Star">⭐<span class="lbl">Star</span></button>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="hint">👈 Pick a shape to get started!</div>
+    <div id="sel-info">Selected: <span id="sel-name">—</span></div>
+    <div id="key-hint">
+      <kbd>G</kbd> Move &nbsp; <kbd>R</kbd> Rotate &nbsp; <kbd>S</kbd> Scale<br>
+      <kbd>Del</kbd> Delete &nbsp; <kbd>Esc</kbd> Deselect<br>
+      Right-drag or scroll to orbit
+    </div>
+  </div>
+
+  <div id="colors"><!-- swatches via JS --></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { OrbitControls }    from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TransformControls.js';
+import { STLExporter }       from 'https://esm.sh/three@0.160.0/examples/jsm/exporters/STLExporter.js';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const objects   = [];
+let selected    = null;
+let mode        = 'translate';
+let color       = '#ff6b6b';
+let isDragging  = false;
+let mouseDownPos = { x: 0, y: 0 };
+
+// ── Scene setup ───────────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1b2a);
+scene.fog = new THREE.FogExp2(0x0d1b2a, 0.018);
+
+const wrap = document.getElementById('canvas-wrap');
+const W = () => wrap.clientWidth;
+const H = () => wrap.clientHeight;
+
+const camera = new THREE.PerspectiveCamera(55, W() / H(), 0.1, 200);
+camera.position.set(10, 9, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(W(), H());
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+wrap.appendChild(renderer.domElement);
+
+// ── Lights ────────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x88aacc, 0.8));
+
+const sun = new THREE.DirectionalLight(0xfffbe0, 2.0);
+sun.position.set(12, 20, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-16, right:16, top:16, bottom:-16, near:1, far:60 });
+scene.add(sun);
+
+const fill = new THREE.DirectionalLight(0x4488ff, 0.5);
+fill.position.set(-8, 6, -8);
+scene.add(fill);
+
+// Stars bg
+const starGeo = new THREE.BufferGeometry();
+const starVerts = [];
+for (let i = 0; i < 1000; i++) {
+  starVerts.push((Math.random() - 0.5) * 120, Math.random() * 60 + 5, (Math.random() - 0.5) * 120);
+}
+starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.15, sizeAttenuation: true })));
+
+// Grid + ground
+const grid = new THREE.GridHelper(22, 22, 0x1a3050, 0x122438);
+scene.add(grid);
+
+const groundMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(22, 22),
+  new THREE.MeshLambertMaterial({ color: 0x0f2030, transparent: true, opacity: 0.95 })
+);
+groundMesh.rotation.x = -Math.PI / 2;
+groundMesh.receiveShadow = true;
+groundMesh.userData.isGround = true;
+scene.add(groundMesh);
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.07;
+orbit.target.set(0, 1, 0);
+orbit.maxPolarAngle = Math.PI * 0.47;
+orbit.minDistance = 3; orbit.maxDistance = 45;
+orbit.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+orbit.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+const xform = new TransformControls(camera, renderer.domElement);
+xform.setTranslationSnap(0.5);
+xform.setRotationSnap(THREE.MathUtils.degToRad(15));
+xform.setScaleSnap(0.1);
+xform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
+scene.add(xform);
+
+// ── Color palette ─────────────────────────────────────────────────────────────
+const palette = [
+  '#ff6b6b','#ff9f43','#feca57','#ffdd59','#c8ff57',
+  '#1dd1a1','#48dbfb','#54a0ff','#5f27cd','#ff9ff3',
+  '#f368e0','#ffffff','#aaaaaa','#2f3542'
+];
+
+const colorsEl = document.getElementById('colors');
+palette.forEach(hex => {
+  const s = document.createElement('div');
+  s.className = 'swatch' + (hex === color ? ' sel' : '');
+  s.style.background = hex;
+  s.title = hex;
+  s.addEventListener('click', () => {
+    color = hex;
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('sel'));
+    s.classList.add('sel');
+    if (selected) selected.material.color.set(hex);
+  });
+  colorsEl.appendChild(s);
+});
+
+// ── Shape geometry factory ────────────────────────────────────────────────────
+function makeGeo(type) {
+  switch (type) {
+    case 'box':      return new THREE.BoxGeometry(1.3, 1.3, 1.3);
+    case 'sphere':   return new THREE.SphereGeometry(0.75, 36, 36);
+    case 'cylinder': return new THREE.CylinderGeometry(0.55, 0.55, 1.7, 36);
+    case 'cone':     return new THREE.ConeGeometry(0.75, 1.7, 36);
+    case 'torus':    return new THREE.TorusGeometry(0.6, 0.24, 18, 52);
+    case 'pyramid':  return new THREE.ConeGeometry(0.75, 1.5, 4);
+    case 'star': {
+      // Lathe star shape
+      const pts = [];
+      for (let i = 0; i <= 10; i++) {
+        const angle = (i / 10) * Math.PI;
+        const r = i % 2 === 0 ? 0.7 : 0.32;
+        pts.push(new THREE.Vector2(r * Math.sin(angle), r * Math.cos(angle)));
+      }
+      return new THREE.LatheGeometry(pts, 5);
+    }
+    default: return new THREE.BoxGeometry(1, 1, 1);
+  }
+}
+
+const defaultY = { box:0.65, sphere:0.75, cylinder:0.85, cone:0.85, torus:0.24, pyramid:0.75, star:0 };
+const labelMap  = { box:'Box', sphere:'Ball', cylinder:'Tube', cone:'Cone', torus:'Donut', pyramid:'Pyramid', star:'Star' };
+
+// ── Wire up buttons inside the module ────────────────────────────────────────
+document.querySelectorAll('.shape-btn[data-shape]').forEach(btn => {
+  btn.addEventListener('click', () => addShape(btn.dataset.shape));
+});
+document.querySelectorAll('.tool-btn[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => setMode(btn.dataset.mode));
+});
+document.getElementById('btn-duplicate').addEventListener('click', duplicateSelected);
+document.getElementById('btn-delete').addEventListener('click', deleteSelected);
+document.getElementById('btn-clear').addEventListener('click', clearAll);
+
+document.getElementById('btn-stl').addEventListener('click', exportSTL);
+
+// ── Add shape ─────────────────────────────────────────────────────────────────
+function addShape(type) {
+  const mat  = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.Mesh(makeGeo(type), mat);
+  mesh.position.set((Math.random()-0.5)*5, defaultY[type] ?? 0.7, (Math.random()-0.5)*5);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData = { type, label: labelMap[type] };
+  scene.add(mesh); objects.push(mesh);
+  pick(mesh);
+  hideHint();
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+function pick(obj) {
+  if (selected && selected !== obj) selected.material.emissive?.setHex(0x000000);
+  selected = obj;
+  if (obj) {
+    obj.material.emissive = new THREE.Color(0x224466);
+    xform.attach(obj);
+    xform.setMode(mode);
+    document.getElementById('sel-name').textContent = obj.userData.label || 'Object';
+    document.getElementById('sel-info').classList.add('on');
+  } else {
+    xform.detach();
+    document.getElementById('sel-info').classList.remove('on');
+  }
+}
+// ── Click / pointer ───────────────────────────────────────────────────────────
+const ray   = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  mouseDownPos = { x: e.clientX, y: e.clientY };
+  isDragging = false;
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  const dx = e.clientX - mouseDownPos.x, dy = e.clientY - mouseDownPos.y;
+  if (Math.sqrt(dx*dx + dy*dy) > 4) isDragging = true;
+});
+renderer.domElement.addEventListener('pointerup', e => {
+  if (isDragging || e.button !== 0) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+  mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+  ray.setFromCamera(mouse, camera);
+
+  const hits = ray.intersectObjects(objects);
+  if (hits.length > 0) {
+    pick(hits[0].object);
+  } else {
+    const gnd = ray.intersectObject(groundMesh);
+    if (gnd.length > 0 && selected) {
+      selected.material.emissive?.setHex(0x000000);
+      selected = null;
+      xform.detach();
+      document.getElementById('sel-info').classList.remove('on');
+    }
+  }
+});
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.key) {
+    case 'g': case 'G': setMode('translate'); break;
+    case 'r': case 'R': setMode('rotate');    break;
+    case 's': case 'S': setMode('scale');     break;
+    case 'Delete': case 'Backspace': deleteSelected(); break;
+    case 'Escape':
+      if (selected) { selected.material.emissive?.setHex(0x000000); selected = null; xform.detach(); document.getElementById('sel-info').classList.remove('on'); }
+      break;
+    case 'd': case 'D': if (e.ctrlKey || e.metaKey) { e.preventDefault(); duplicateSelected(); } break;
+  }
+});
+
+// ── Tool actions ──────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  xform.setMode(m);
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const ids = { translate:'btn-move', rotate:'btn-rotate', scale:'btn-scale' };
+  document.getElementById(ids[m])?.classList.add('active');
+}
+
+function deleteSelected() {
+  if (!selected) return;
+  scene.remove(selected);
+  objects.splice(objects.indexOf(selected), 1);
+  xform.detach(); selected = null;
+  document.getElementById('sel-info').classList.remove('on');
+  toast('🗑️ Deleted!');
+}
+
+function duplicateSelected() {
+  if (!selected) return;
+  const mat  = new THREE.MeshLambertMaterial({ color: selected.material.color.getHex() });
+  const mesh = new THREE.Mesh(selected.geometry.clone(), mat);
+  mesh.position.copy(selected.position).addScalar(0.8);
+  mesh.rotation.copy(selected.rotation);
+  mesh.scale.copy(selected.scale);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData = { ...selected.userData };
+  scene.add(mesh); objects.push(mesh);
+  pick(mesh);
+  toast('📋 Copied!');
+}
+
+function clearAll() {
+  objects.forEach(o => scene.remove(o));
+  objects.length = 0;
+  xform.detach(); selected = null;
+  document.getElementById('sel-info').classList.remove('on');
+  toast('💥 Cleared!');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.style.opacity = '0', 1400);
+}
+
+// ── Hint ──────────────────────────────────────────────────────────────────────
+let hintGone = false;
+function hideHint() {
+  if (hintGone) return; hintGone = true;
+  const h = document.getElementById('hint');
+  h.style.opacity = '0';
+  setTimeout(() => h.remove(), 900);
+}
+
+// ── STL Export ────────────────────────────────────────────────────────────────
+function exportSTL() {
+  if (objects.length === 0) { toast('⚠️ Nothing to export!'); return; }
+
+  // Merge all objects into a temporary group
+  const group = new THREE.Group();
+  objects.forEach(obj => {
+    const clone = obj.clone();
+    // Apply world matrix so position/rotation/scale are baked in
+    clone.updateMatrixWorld(true);
+    group.add(clone);
+  });
+
+  const exporter = new STLExporter();
+  const stlString = exporter.parse(group, { binary: false });
+
+  const blob = new Blob([stlString], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = '3d-creation.stl';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ STL downloaded!');
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+new ResizeObserver(() => {
+  camera.aspect = W() / H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+}).observe(wrap);
+
+// ── Animate ───────────────────────────────────────────────────────────────────
+(function loop() {
+  requestAnimationFrame(loop);
+  orbit.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
 
